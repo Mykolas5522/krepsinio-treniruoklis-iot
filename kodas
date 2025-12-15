@@ -1,0 +1,58 @@
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+
+char auth[] = "BLYNK_AUTH_TOKEN";
+char ssid[] = "TAVO_WIFI_PAVADINIMAS";
+char pass[] = "TAVO_WIFI_SLAPTAZODIS";
+
+const int IR_PIN  = D1;  // IR jutiklis
+const int LED_PIN = D2;  // LED indikatorius
+
+long score = 0;
+bool shotDetected = false;
+unsigned long lastShotTime = 0;
+const unsigned long debounceMs = 500; // ms
+
+BlynkTimer timer;
+
+void sendScore() {
+  Blynk.virtualWrite(V0, score);
+}
+
+void setup() {
+  pinMode(IR_PIN, INPUT_PULLUP);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
+  Serial.begin(9600);
+
+  Blynk.begin(auth, ssid, pass);
+
+  timer.setInterval(1000L, sendScore);
+}
+
+void loop() {
+  Blynk.run();
+  timer.run();
+
+  int sensorValue = digitalRead(IR_PIN);
+  unsigned long now = millis();
+
+  if (sensorValue == LOW && !shotDetected && (now - lastShotTime > debounceMs)) {
+    shotDetected = true;
+    lastShotTime = now;
+
+    score++;
+    Serial.print("Score: ");
+    Serial.println(score);
+
+    digitalWrite(LED_PIN, HIGH);
+    Blynk.virtualWrite(V0, score);
+    delay(100);
+    digitalWrite(LED_PIN, LOW);
+  }
+
+  if (sensorValue == HIGH) {
+    shotDetected = false;
+  }
+}
